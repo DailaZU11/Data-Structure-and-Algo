@@ -1,0 +1,551 @@
+//Header file
+
+#pragma once
+#include <iostream>
+#include <queue>
+#include <stack>
+#include <vector>
+using namespace std;
+
+template <typename T>
+class BST {
+private:
+    struct Node {
+        T data;
+        Node* left;
+        Node* right;
+        Node(T val) : data(val), left(nullptr), right(nullptr) {}
+    };
+
+    Node* root;
+
+    // Helper functions
+    Node* insertHelper(Node* node, T data);
+    Node* deleteHelper(Node* node, T data);
+    Node* minValueNode(Node* node);
+    Node* maxValueNode(Node* node);
+    Node* searchHelper(Node* node, T data);
+    Node* lcaHelper(Node* node, T n1, T n2);
+    Node* floorCeilHelper(Node* node, T key, bool findFloor);
+    Node* buildBalancedBSTHelper(vector<T>& arr, int start, int end);
+    void inorderHelper(Node* node, vector<T>& result);
+    void preorderHelper(Node* node, vector<T>& result);
+    void postorderHelper(Node* node, vector<T>& result);
+    void levelOrderHelper(Node* node, vector<T>& result);
+    void rangeQueryHelper(Node* node, T L, T R, vector<T>& result);
+    void bstToDLLHelper(Node* node, Node*& head, Node*& prev);
+    void kthSmallestHelper(Node* node, int& k, T& result);
+    void kthLargestHelper(Node* node, int& k, T& result);
+    void recoverBSTHelper(Node* node, Node*& prev, Node*& first, Node*& second);
+    bool validateBSTHelper(Node* node, T minVal, T maxVal);
+    void mergeBSTHelper(Node* node, vector<T>& result);
+    void trimBSTHelper(Node*& node, T L, T R);
+
+public:
+    BST() : root(nullptr) {}
+    ~BST();
+
+    // Core Operations
+    void insert(T data);                   // Iterative
+    void insertRecursive(T data);          // Recursive
+    void remove(T data);                   // Deletion (3 cases)
+    bool search(T data);                   // Iterative
+    bool searchRecursive(T data);          // Recursive
+
+    // Traversals
+    vector<T> inorder();                   // Sorted order
+    vector<T> preorder();                  // Copy/Clone
+    vector<T> postorder();                 // Deletion
+    vector<T> levelOrder();                // BFS (Queue)
+
+    // Advanced Queries
+    T kthSmallest(int k);                  // Kth smallest element
+    T kthLargest(int k);                   // Kth largest element
+    T floor(T key);                        // Largest value <= key
+    T ceil(T key);                         // Smallest value >= key
+    vector<T> rangeQuery(T L, T R);        // Elements in [L, R]
+    T lca(T n1, T n2);                     // Lowest Common Ancestor
+
+    // BST Transformations
+    void bstToDLL();                       // Convert BST to Doubly Linked List (Inorder)
+    void sortedArrayToBalancedBST(vector<T>& arr); // Build balanced BST from sorted array
+    void recoverBST();                      // Fix swapped nodes
+    bool validateBST();                     // Check if tree is BST
+    void mergeBST(BST<T>& other);           // Merge two BSTs
+    void trimBST(T L, T R);                // Remove nodes outside [L, R]
+
+    // Utility
+    bool isEmpty() { return root == nullptr; }
+    void clear();
+};
+
+
+//Implementation file
+#include "binarysearchtree.h"
+#include <algorithm>
+
+// Insertion (Iterative)
+template <typename T>
+void BST<T>::insert(T data) {
+    if (root == nullptr) {
+        root = new Node(data);
+        return;
+    }
+    Node* curr = root;
+    while (true) {
+        if (data < curr->data) {
+            if (curr->left == nullptr) {
+                curr->left = new Node(data);
+                break;
+            }
+            curr = curr->left;
+        } else {
+            if (curr->right == nullptr) {
+                curr->right = new Node(data);
+                break;
+            }
+            curr = curr->right;
+        }
+    }
+}
+
+// Insertion (Recursive)
+template <typename T>
+typename BST<T>::Node* BST<T>::insertHelper(Node* node, T data) {
+    if (node == nullptr) return new Node(data);
+    if (data < node->data) node->left = insertHelper(node->left, data);
+    else node->right = insertHelper(node->right, data);
+    return node;
+}
+
+template <typename T>
+void BST<T>::insertRecursive(T data) {
+    root = insertHelper(root, data);
+}
+
+// Search (Iterative)
+template <typename T>
+bool BST<T>::search(T data) {
+    Node* curr = root;
+    while (curr != nullptr) {
+        if (curr->data == data) return true;
+        else if (data < curr->data) curr = curr->left;
+        else curr = curr->right;
+    }
+    return false;
+}
+
+// Search (Recursive)
+template <typename T>
+bool BST<T>::searchRecursive(T data) {
+    return searchHelper(root, data) != nullptr;
+}
+
+template <typename T>
+typename BST<T>::Node* BST<T>::searchHelper(Node* node, T data) {
+    if (node == nullptr || node->data == data) return node;
+    if (data < node->data) return searchHelper(node->left, data);
+    else return searchHelper(node->right, data);
+}
+
+// Deletion (3 Cases)
+template <typename T>
+void BST<T>::remove(T data) {
+    root = deleteHelper(root, data);
+}
+
+template <typename T>
+typename BST<T>::Node* BST<T>::deleteHelper(Node* node, T data) {
+    if (node == nullptr) return node;
+    if (data < node->data) node->left = deleteHelper(node->left, data);
+    else if (data > node->data) node->right = deleteHelper(node->right, data);
+    else {
+        // Case 1: No child (leaf node)
+        if (node->left == nullptr && node->right == nullptr) {
+            delete node;
+            return nullptr;
+        }
+        // Case 2: One child
+        else if (node->left == nullptr) {
+            Node* temp = node->right;
+            delete node;
+            return temp;
+        }
+        else if (node->right == nullptr) {
+            Node* temp = node->left;
+            delete node;
+            return temp;
+        }
+        // Case 3: Two children (replace with inorder successor)
+        else {
+            Node* temp = minValueNode(node->right);
+            node->data = temp->data;
+            node->right = deleteHelper(node->right, temp->data);
+        }
+    }
+    return node;
+}
+
+// Find minimum value node (used in deletion)
+template <typename T>
+typename BST<T>::Node* BST<T>::minValueNode(Node* node) {
+    Node* curr = node;
+    while (curr && curr->left != nullptr) curr = curr->left;
+    return curr;
+}
+
+// Find maximum value node
+template <typename T>
+typename BST<T>::Node* BST<T>::maxValueNode(Node* node) {
+    Node* curr = node;
+    while (curr && curr->right != nullptr) curr = curr->right;
+    return curr;
+}
+
+// Inorder Traversal (Left-Root-Right)
+template <typename T>
+vector<T> BST<T>::inorder() {
+    vector<T> result;
+    inorderHelper(root, result);
+    return result;
+}
+
+template <typename T>
+void BST<T>::inorderHelper(Node* node, vector<T>& result) {
+    if (node == nullptr) return;
+    inorderHelper(node->left, result);
+    result.push_back(node->data);
+    inorderHelper(node->right, result);
+}
+
+// Preorder Traversal (Root-Left-Right)
+template <typename T>
+vector<T> BST<T>::preorder() {
+    vector<T> result;
+    preorderHelper(root, result);
+    return result;
+}
+
+template <typename T>
+void BST<T>::preorderHelper(Node* node, vector<T>& result) {
+    if (node == nullptr) return;
+    result.push_back(node->data);
+    preorderHelper(node->left, result);
+    preorderHelper(node->right, result);
+}
+
+// Postorder Traversal (Left-Right-Root)
+template <typename T>
+vector<T> BST<T>::postorder() {
+    vector<T> result;
+    postorderHelper(root, result);
+    return result;
+}
+
+template <typename T>
+void BST<T>::postorderHelper(Node* node, vector<T>& result) {
+    if (node == nullptr) return;
+    postorderHelper(node->left, result);
+    postorderHelper(node->right, result);
+    result.push_back(node->data);
+}
+
+// Level-Order Traversal (BFS using Queue)
+template <typename T>
+vector<T> BST<T>::levelOrder() {
+    vector<T> result;
+    if (root == nullptr) return result;
+    queue<Node*> q;
+    q.push(root);
+    while (!q.empty()) {
+        Node* curr = q.front();
+        q.pop();
+        result.push_back(curr->data);
+        if (curr->left != nullptr) q.push(curr->left);
+        if (curr->right != nullptr) q.push(curr->right);
+    }
+    return result;
+}
+
+// Kth Smallest Element (Inorder Traversal)
+template <typename T>
+T BST<T>::kthSmallest(int k) {
+    T result;
+    int count = k;
+    kthSmallestHelper(root, count, result);
+    return result;
+}
+
+template <typename T>
+void BST<T>::kthSmallestHelper(Node* node, int& k, T& result) {
+    if (node == nullptr || k <= 0) return;
+    kthSmallestHelper(node->left, k, result);
+    if (--k == 0) result = node->data;
+    kthSmallestHelper(node->right, k, result);
+}
+
+// Kth Largest Element (Reverse Inorder)
+template <typename T>
+T BST<T>::kthLargest(int k) {
+    T result;
+    int count = k;
+    kthLargestHelper(root, count, result);
+    return result;
+}
+
+template <typename T>
+void BST<T>::kthLargestHelper(Node* node, int& k, T& result) {
+    if (node == nullptr || k <= 0) return;
+    kthLargestHelper(node->right, k, result);
+    if (--k == 0) result = node->data;
+    kthLargestHelper(node->left, k, result);
+}
+
+// Floor of a Key (Largest value <= key)
+template <typename T>
+T BST<T>::floor(T key) {
+    Node* result = floorCeilHelper(root, key, true);
+    return (result != nullptr) ? result->data : T();
+}
+
+// Ceil of a Key (Smallest value >= key)
+template <typename T>
+T BST<T>::ceil(T key) {
+    Node* result = floorCeilHelper(root, key, false);
+    return (result != nullptr) ? result->data : T();
+}
+
+template <typename T>
+typename BST<T>::Node* BST<T>::floorCeilHelper(Node* node, T key, bool findFloor) {
+    if (node == nullptr) return nullptr;
+    if (node->data == key) return node;
+    if (findFloor ? (key < node->data) : (key > node->data)) {
+        return floorCeilHelper(findFloor ? node->left : node->right, key, findFloor);
+    }
+    Node* temp = floorCeilHelper(findFloor ? node->right : node->left, key, findFloor);
+    return (temp != nullptr) ? temp : node;
+}
+
+// Lowest Common Ancestor (LCA)
+template <typename T>
+T BST<T>::lca(T n1, T n2) {
+    Node* result = lcaHelper(root, n1, n2);
+    return (result != nullptr) ? result->data : T();
+}
+
+template <typename T>
+typename BST<T>::Node* BST<T>::lcaHelper(Node* node, T n1, T n2) {
+    if (node == nullptr) return nullptr;
+    if (node->data > n1 && node->data > n2) return lcaHelper(node->left, n1, n2);
+    if (node->data < n1 && node->data < n2) return lcaHelper(node->right, n1, n2);
+    return node;
+}
+
+// Range Query (Elements between L and R)
+template <typename T>
+vector<T> BST<T>::rangeQuery(T L, T R) {
+    vector<T> result;
+    rangeQueryHelper(root, L, R, result);
+    return result;
+}
+
+template <typename T>
+void BST<T>::rangeQueryHelper(Node* node, T L, T R, vector<T>& result) {
+    if (node == nullptr) return;
+    if (L < node->data) rangeQueryHelper(node->left, L, R, result);
+    if (L <= node->data && node->data <= R) result.push_back(node->data);
+    if (node->data < R) rangeQueryHelper(node->right, L, R, result);
+}
+
+// BST to Doubly Linked List (Inorder)
+template <typename T>
+void BST<T>::bstToDLL() {
+    Node* head = nullptr;
+    Node* prev = nullptr;
+    bstToDLLHelper(root, head, prev);
+    // Now, 'head' points to the start of the DLL
+}
+
+template <typename T>
+void BST<T>::bstToDLLHelper(Node* node, Node*& head, Node*& prev) {
+    if (node == nullptr) return;
+    bstToDLLHelper(node->left, head, prev);
+    if (prev == nullptr) head = node;
+    else {
+        prev->right = node;
+        node->left = prev;
+    }
+    prev = node;
+    bstToDLLHelper(node->right, head, prev);
+}
+
+// Sorted Array to Balanced BST
+template <typename T>
+void BST<T>::sortedArrayToBalancedBST(vector<T>& arr) {
+    root = buildBalancedBSTHelper(arr, 0, arr.size() - 1);
+}
+
+template <typename T>
+typename BST<T>::Node* BST<T>::buildBalancedBSTHelper(vector<T>& arr, int start, int end) {
+    if (start > end) return nullptr;
+    int mid = start + (end - start) / 2;
+    Node* node = new Node(arr[mid]);
+    node->left = buildBalancedBSTHelper(arr, start, mid - 1);
+    node->right = buildBalancedBSTHelper(arr, mid + 1, end);
+    return node;
+}
+
+// Recover BST (Fix swapped nodes)
+template <typename T>
+void BST<T>::recoverBST() {
+    Node *first = nullptr, *second = nullptr, *prev = nullptr;
+    recoverBSTHelper(root, prev, first, second);
+    if (first && second) swap(first->data, second->data);
+}
+
+template <typename T>
+void BST<T>::recoverBSTHelper(Node* node, Node*& prev, Node*& first, Node*& second) {
+    if (node == nullptr) return;
+    recoverBSTHelper(node->left, prev, first, second);
+    if (prev != nullptr && prev->data > node->data) {
+        if (first == nullptr) first = prev;
+        second = node;
+    }
+    prev = node;
+    recoverBSTHelper(node->right, prev, first, second);
+}
+
+// Validate BST
+template <typename T>
+bool BST<T>::validateBST() {
+    return validateBSTHelper(root, numeric_limits<T>::min(), numeric_limits<T>::max());
+}
+
+template <typename T>
+bool BST<T>::validateBSTHelper(Node* node, T minVal, T maxVal) {
+    if (node == nullptr) return true;
+    if (node->data <= minVal || node->data >= maxVal) return false;
+    return validateBSTHelper(node->left, minVal, node->data) &&
+           validateBSTHelper(node->right, node->data, maxVal);
+}
+
+// Merge Two BSTs
+template <typename T>
+void BST<T>::mergeBST(BST<T>& other) {
+    vector<T> list1 = this->inorder();
+    vector<T> list2 = other.inorder();
+    vector<T> merged;
+    merge(list1.begin(), list1.end(), list2.begin(), list2.end(), back_inserter(merged));
+    this->sortedArrayToBalancedBST(merged);
+}
+
+// Trim BST (Remove nodes outside [L, R])
+template <typename T>
+void BST<T>::trimBST(T L, T R) {
+    trimBSTHelper(root, L, R);
+}
+
+template <typename T>
+void BST<T>::trimBSTHelper(Node*& node, T L, T R) {
+    if (node == nullptr) return;
+    if (node->data < L) {
+        Node* rightChild = node->right;
+        delete node;
+        node = rightChild;
+        trimBSTHelper(node, L, R);
+    }
+    else if (node->data > R) {
+        Node* leftChild = node->left;
+        delete node;
+        node = leftChild;
+        trimBSTHelper(node, L, R);
+    }
+    else {
+        trimBSTHelper(node->left, L, R);
+        trimBSTHelper(node->right, L, R);
+    }
+}
+
+// Destructor (Clear BST)
+template <typename T>
+BST<T>::~BST() {
+    clear();
+}
+
+template <typename T>
+void BST<T>::clear() {
+    while (root != nullptr) {
+        remove(root->data);
+    }
+}
+
+//Main File
+
+#include "binarysearchtree.h"
+#include <iostream>
+using namespace std;
+
+int main() {
+    BST<int> bst;
+
+    // Insertion
+    bst.insert(50);
+    bst.insert(30);
+    bst.insert(70);
+    bst.insert(20);
+    bst.insert(40);
+    bst.insert(60);
+    bst.insert(80);
+
+    // Search
+    cout << "Search 40: " << (bst.search(40) ? "Found" : "Not Found") << endl;
+    cout << "Search 100: " << (bst.search(100) ? "Found" : "Not Found") << endl;
+
+    // Traversals
+    cout << "Inorder: ";
+    for (int num : bst.inorder()) cout << num << " ";
+    cout << endl;
+
+    cout << "Preorder: ";
+    for (int num : bst.preorder()) cout << num << " ";
+    cout << endl;
+
+    cout << "Postorder: ";
+    for (int num : bst.postorder()) cout << num << " ";
+    cout << endl;
+
+    cout << "Level Order: ";
+    for (int num : bst.levelOrder()) cout << num << " ";
+    cout << endl;
+
+    // Advanced Operations
+    cout << "3rd Smallest: " << bst.kthSmallest(3) << endl;
+    cout << "2nd Largest: " << bst.kthLargest(2) << endl;
+    cout << "Floor of 35: " << bst.floor(35) << endl;
+    cout << "Ceil of 65: " << bst.ceil(65) << endl;
+    cout << "LCA of 20 and 40: " << bst.lca(20, 40) << endl;
+    cout << "Elements between 30 and 70: ";
+    for (int num : bst.rangeQuery(30, 70)) cout << num << " ";
+    cout << endl;
+
+    // BST Transformations
+    bst.recoverBST(); // Fixes if any two nodes are swapped
+    cout << "Is BST Valid? " << (bst.validateBST() ? "Yes" : "No") << endl;
+
+    // Merge Two BSTs
+    BST<int> bst2;
+    bst2.insert(55);
+    bst2.insert(75);
+    bst.mergeBST(bst2);
+    cout << "After Merging: ";
+    for (int num : bst.inorder()) cout << num << " ";
+    cout << endl;
+
+    // Trim BST
+    bst.trimBST(30, 70);
+    cout << "After Trimming [30,70]: ";
+    for (int num : bst.inorder()) cout << num << " ";
+    cout << endl;
+
+    return 0;
+}
